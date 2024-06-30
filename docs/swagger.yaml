@@ -1,0 +1,367 @@
+basePath: /api/v1
+definitions:
+  dto.AuthRequestLoginDto:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  dto.AuthRequestRegisterDto:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+      password_confirm:
+        type: string
+      role:
+        type: string
+    type: object
+  entity.Product:
+    type: object
+  model.PagedResponse:
+    properties:
+      data:
+        items: {}
+        type: array
+      paging:
+        $ref: '#/definitions/model.Paging'
+      status:
+        $ref: '#/definitions/model.Status'
+    type: object
+  model.Paging:
+    properties:
+      page:
+        type: integer
+      rowsPerPage:
+        type: integer
+      totalPages:
+        type: integer
+      totalRows:
+        type: integer
+    type: object
+  model.SingleResponse:
+    properties:
+      data: {}
+      status:
+        $ref: '#/definitions/model.Status'
+    type: object
+  model.Status:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+    type: object
+info:
+  contact:
+    email: altsaqifnugraha19@gmail.com
+    name: API Support
+  description: This is a API use Golang with GIN Framework.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://example.com/terms/
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Log in an existing user
+      parameters:
+      - description: Login Payload
+        in: body
+        name: AuthRequestLoginDto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AuthRequestLoginDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/model.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    get:
+      description: Log out the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+      summary: Logout user
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user
+      parameters:
+      - description: Register Payload
+        in: body
+        name: AuthRequestRegisterDto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AuthRequestRegisterDto'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Register user
+      tags:
+      - auth
+  /products:
+    get:
+      description: Get a list of all products with pagination
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.PagedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Get all products
+      tags:
+      - products
+    post:
+      consumes:
+      - application/json
+      description: Create a new product
+      parameters:
+      - description: Product Payload
+        in: body
+        name: Product
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Product'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Create product
+      tags:
+      - products
+  /products/{id}:
+    delete:
+      description: Delete a product by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Delete product
+      tags:
+      - products
+    get:
+      description: Get details of a product by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Get product by ID
+      tags:
+      - products
+    put:
+      consumes:
+      - application/json
+      description: Update an existing product by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product Payload
+        in: body
+        name: Product
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Product'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Update product
+      tags:
+      - products
+  /products/stock/{stock}:
+    get:
+      description: Get a list of products by stock value
+      parameters:
+      - description: Stock
+        in: path
+        name: stock
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Get products by stock
+      tags:
+      - products
+  /profiles:
+    get:
+      description: Get a list of all users with pagination
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.PagedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Get all users
+      tags:
+      - users
+  /profiles/{id}:
+    get:
+      description: Get details of a user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SingleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+      summary: Get user by ID
+      tags:
+      - users
+swagger: "2.0"
