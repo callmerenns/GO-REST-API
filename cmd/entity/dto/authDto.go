@@ -50,24 +50,26 @@ type UserWithoutProducts struct {
 }
 
 type ProductWithUsers struct {
-	ID        uint                  `json:"ID"`
-	CreatedAt time.Time             `json:"CreatedAt"`
-	UpdatedAt time.Time             `json:"UpdatedAt"`
-	DeletedAt DeletedAt             `gorm:"index" json:"DeletedAt,omitempty"`
-	Name      string                `json:"name"`
-	Stock     int                   `json:"stock"`
-	Price     float64               `json:"price"`
-	Users     []UserWithoutProducts `json:"users"`
+	ID          uint                  `json:"ID"`
+	CreatedAt   time.Time             `json:"CreatedAt"`
+	UpdatedAt   time.Time             `json:"UpdatedAt"`
+	DeletedAt   DeletedAt             `gorm:"index" json:"DeletedAt,omitempty"`
+	Name        string                `json:"name"`
+	Description string                `json:"description"`
+	Stock       int                   `json:"stock"`
+	Price       float64               `json:"price"`
+	Users       []UserWithoutProducts `json:"users"`
 }
 
 type ProductWithoutUsers struct {
-	ID        uint      `json:"ID"`
-	CreatedAt time.Time `json:"CreatedAt"`
-	UpdatedAt time.Time `json:"UpdatedAt"`
-	DeletedAt DeletedAt `json:"DeletedAt,omitempty"`
-	Name      string    `json:"name"`
-	Stock     int       `json:"stock"`
-	Price     float64   `json:"price"`
+	ID          uint      `json:"ID"`
+	CreatedAt   time.Time `json:"CreatedAt"`
+	UpdatedAt   time.Time `json:"UpdatedAt"`
+	DeletedAt   DeletedAt `json:"DeletedAt,omitempty"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Stock       int       `json:"stock"`
+	Price       float64   `json:"price"`
 }
 
 type UserWithProducts struct {
@@ -86,14 +88,15 @@ type UserWithProducts struct {
 // Helper function to convert Product model to ProductWithUsers DTO
 func ConvertProductToResponse(product entity.Product) ProductWithUsers {
 	responseProduct := ProductWithUsers{
-		ID:        product.ID,
-		CreatedAt: product.CreatedAt,
-		UpdatedAt: product.UpdatedAt,
-		DeletedAt: DeletedAt(product.DeletedAt),
-		Name:      product.Name,
-		Stock:     product.Stock,
-		Price:     product.Price,
-		Users:     []UserWithoutProducts{},
+		ID:          product.ID,
+		CreatedAt:   product.CreatedAt,
+		UpdatedAt:   product.UpdatedAt,
+		DeletedAt:   DeletedAt(product.DeletedAt),
+		Name:        product.Name,
+		Description: product.Description,
+		Stock:       product.Stock,
+		Price:       product.Price,
+		Users:       []UserWithoutProducts{},
 	}
 
 	for _, user := range product.Users {
@@ -130,13 +133,14 @@ func ConvertUserToResponse(user entity.User) UserWithProducts {
 
 	for _, product := range user.Products {
 		responseUser.Products = append(responseUser.Products, ProductWithoutUsers{
-			ID:        product.ID,
-			CreatedAt: product.CreatedAt,
-			UpdatedAt: product.UpdatedAt,
-			DeletedAt: DeletedAt(product.DeletedAt),
-			Name:      product.Name,
-			Stock:     product.Stock,
-			Price:     product.Price,
+			ID:          product.ID,
+			CreatedAt:   product.CreatedAt,
+			UpdatedAt:   product.UpdatedAt,
+			DeletedAt:   DeletedAt(product.DeletedAt),
+			Name:        product.Name,
+			Description: product.Description,
+			Stock:       product.Stock,
+			Price:       product.Price,
 		})
 	}
 
