@@ -59,7 +59,7 @@ func NewServer() *Server {
 	}
 
 	// Drop existing tables
-	// db.Migrator().DropTable(&entity.User{}, &entity.Product{}, &entity.Enrollment{})
+	db.Migrator().DropTable(&entity.User{}, &entity.Product{}, &entity.Enrollment{})
 
 	err = db.AutoMigrate(&entity.User{}, &entity.Product{}, &entity.Enrollment{})
 
