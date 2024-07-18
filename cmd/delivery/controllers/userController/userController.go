@@ -7,7 +7,9 @@ import (
 
 	"github.com/altsaqif/go-rest/cmd/config"
 	"github.com/altsaqif/go-rest/cmd/delivery/middlewares"
+	"github.com/altsaqif/go-rest/cmd/entity/dto"
 	"github.com/altsaqif/go-rest/cmd/shared/common"
+	"github.com/altsaqif/go-rest/cmd/shared/model"
 	"github.com/altsaqif/go-rest/cmd/usecase"
 	"github.com/gin-gonic/gin"
 )
@@ -45,18 +47,30 @@ func (u *UserController) GetAllHandler(ctx *gin.Context) {
 		size = 10
 	}
 
-	users, paging, err := u.userUc.FindAllUsers(page, size)
-	if err != nil {
-		common.SendErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+	type result struct {
+		users  []dto.UserWithProducts
+		paging model.Paging
+		err    error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		users, paging, err := u.userUc.FindAllUsers(page, size)
+		resultChan <- result{users, paging, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
 
-	var interfaceSlice = make([]interface{}, len(users))
-	for i, v := range users {
+	var interfaceSlice = make([]interface{}, len(res.users))
+	for i, v := range res.users {
 		interfaceSlice[i] = v
 	}
 
-	common.SendPagedResponse(ctx, interfaceSlice, paging, "Ok")
+	common.SendPagedResponse(ctx, interfaceSlice, res.paging, "Ok")
 }
 
 // @Summary Get user by ID
@@ -75,12 +89,24 @@ func (u *UserController) GetHandler(ctx *gin.Context) {
 	}
 
 	uintValue := uint(convUint)
-	user, err := u.userUc.FindUserByID(uintValue)
-	if err != nil {
-		common.SendErrorResponse(ctx, http.StatusNotFound, err.Error())
+
+	type result struct {
+		user dto.UserWithProducts
+		err  error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		user, err := u.userUc.FindUserByID(uintValue)
+		resultChan <- result{user, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusNotFound, res.err.Error())
 		return
 	}
-	common.SendSingleResponse(ctx, "Ok", user)
+	common.SendSingleResponse(ctx, "Ok", res.user)
 }
 
 func (u *UserController) Route() {

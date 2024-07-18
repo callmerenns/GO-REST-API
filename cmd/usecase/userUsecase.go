@@ -23,29 +23,79 @@ type userUseCase struct {
 
 // FindAllUsers implements UserUseCase.
 func (u *userUseCase) FindAllUsers(page, size int) ([]dto.UserWithProducts, model.Paging, error) {
-	return u.repo.FindAll(page, size)
+	type result struct {
+		users  []dto.UserWithProducts
+		paging model.Paging
+		err    error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		users, paging, err := u.repo.FindAll(page, size)
+		resultChan <- result{users, paging, err}
+	}()
+
+	res := <-resultChan
+	return res.users, res.paging, res.err
 }
 
 // GetUserByEmail implements UserUseCase.
 func (u *userUseCase) FindUserByEmail(email string) (dto.UserWithProducts, error) {
-	return u.repo.FindByEmail(email)
+	type result struct {
+		user dto.UserWithProducts
+		err  error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		user, err := u.repo.FindByEmail(email)
+		resultChan <- result{user, err}
+	}()
+
+	res := <-resultChan
+	return res.user, res.err
 }
 
 func (u *userUseCase) RegisterNewUser(payload entity.User) (dto.UserWithProducts, error) {
-	userExist, _ := u.repo.FindByEmail(payload.Email)
-	if userExist.Email == payload.Email {
-		return dto.UserWithProducts{}, fmt.Errorf("user with email: %s already exists", payload.Email)
+	type result struct {
+		user dto.UserWithProducts
+		err  error
 	}
-	payload.UpdatedAt = time.Now()
-	createdUser, err := u.repo.Create(payload)
-	if err != nil {
-		return dto.UserWithProducts{}, err
-	}
-	return createdUser, nil
+
+	resultChan := make(chan result)
+	go func() {
+		userExist, _ := u.repo.FindByEmail(payload.Email)
+		if userExist.Email == payload.Email {
+			resultChan <- result{dto.UserWithProducts{}, fmt.Errorf("user with email: %s already exists", payload.Email)}
+			return
+		}
+		payload.UpdatedAt = time.Now()
+		createdUser, err := u.repo.Create(payload)
+		if err != nil {
+			resultChan <- result{dto.UserWithProducts{}, err}
+			return
+		}
+		resultChan <- result{createdUser, nil}
+	}()
+
+	res := <-resultChan
+	return res.user, res.err
 }
 
 func (u *userUseCase) FindUserByID(id uint) (dto.UserWithProducts, error) {
-	return u.repo.FindByID(id)
+	type result struct {
+		user dto.UserWithProducts
+		err  error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		user, err := u.repo.FindByID(id)
+		resultChan <- result{user, err}
+	}()
+
+	res := <-resultChan
+	return res.user, res.err
 }
 
 func NewUserUseCase(repo repository.UserRepository) UserUseCase {

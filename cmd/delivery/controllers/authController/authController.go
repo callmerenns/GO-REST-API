@@ -40,8 +40,19 @@ func (a *AuthController) loginHandler(ctx *gin.Context) {
 		return
 	}
 
-	user, err := a.authUc.FindUserByEmail(payload.Email)
-	if err != nil || !utils.CheckPasswordHash(payload.Password, user.Password) {
+	type result struct {
+		user dto.UserWithProducts
+		err  error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		user, err := a.authUc.FindUserByEmail(payload.Email)
+		resultChan <- result{user, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil || !utils.CheckPasswordHash(payload.Password, res.user.Password) {
 		common.SendErrorResponse(ctx, http.StatusUnauthorized, "Invalid email or password")
 		return
 	}
@@ -81,20 +92,31 @@ func (a *AuthController) registerHandler(ctx *gin.Context) {
 		return
 	}
 
-	user, err := a.authUc.Register(payload)
-	if err != nil {
-		common.SendErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+	type result struct {
+		user dto.UserWithProducts
+		err  error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		user, err := a.authUc.Register(payload)
+		resultChan <- result{user, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
 
 	responseData := map[string]interface{}{
-		"id":         user.ID,
-		"username":   user.FirstName + " " + user.LastName,
-		"email":      user.Email,
-		"role":       user.Role,
-		"created_at": user.CreatedAt,
-		"updated_at": user.UpdatedAt,
-		"deleted_at": user.DeletedAt,
+		"id":         res.user.ID,
+		"username":   res.user.FirstName + " " + res.user.LastName,
+		"email":      res.user.Email,
+		"role":       res.user.Role,
+		"created_at": res.user.CreatedAt,
+		"updated_at": res.user.UpdatedAt,
+		"deleted_at": res.user.DeletedAt,
 	}
 
 	common.SendCreateResponse(ctx, "User registered successfully", responseData)

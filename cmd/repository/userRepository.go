@@ -26,16 +26,31 @@ func (u *userRepository) FindAll(page, size int) ([]dto.UserWithProducts, model.
 	var users []entity.User
 	offset := (page - 1) * size
 
-	// Retrieve total count of users
-	var totalUsers int64
-	if err := u.db.Model(&entity.User{}).Count(&totalUsers).Error; err != nil {
-		log.Printf("userRepository.FindAll: Error counting users: %v \n", err.Error())
-		return nil, model.Paging{}, err
+	type result struct {
+		totalUsers int64
+		err        error
 	}
+
+	resultChan := make(chan result)
+
+	go func() {
+		// Retrieve total count of users
+		var totalUsers int64
+		err := u.db.Model(&entity.User{}).Count(&totalUsers).Error
+		resultChan <- result{totalUsers, err}
+	}()
+
+	var totalUsers int64
+	res := <-resultChan
+	if res.err != nil {
+		log.Printf("userRepository.FindAll: Error counting users: %v \n", res.err)
+		return nil, model.Paging{}, res.err
+	}
+	totalUsers = res.totalUsers
 
 	// Retrieve paginated users
 	if err := u.db.Limit(size).Offset(offset).Preload("Products").Find(&users).Error; err != nil {
-		log.Printf("userRepository.FindAll: Error fetching users: %v \n", err.Error())
+		log.Printf("userRepository.FindAll: Error fetching users: %v \n", err)
 		return nil, model.Paging{}, err
 	}
 
@@ -55,26 +70,65 @@ func (u *userRepository) FindAll(page, size int) ([]dto.UserWithProducts, model.
 }
 
 func (u *userRepository) Create(payload entity.User) (dto.UserWithProducts, error) {
-	if err := u.db.Create(&payload).Error; err != nil {
-		return dto.UserWithProducts{}, err
+	type result struct {
+		user dto.UserWithProducts
+		err  error
 	}
-	return dto.ConvertUserToResponse(payload), nil
+
+	resultChan := make(chan result)
+
+	go func() {
+		if err := u.db.Create(&payload).Error; err != nil {
+			resultChan <- result{dto.UserWithProducts{}, err}
+			return
+		}
+		resultChan <- result{dto.ConvertUserToResponse(payload), nil}
+	}()
+
+	res := <-resultChan
+	return res.user, res.err
 }
 
 func (u *userRepository) FindByID(id uint) (dto.UserWithProducts, error) {
-	var user entity.User
-	if err := u.db.Preload("Products").First(&user, id).Error; err != nil {
-		return dto.UserWithProducts{}, err
+	type result struct {
+		user dto.UserWithProducts
+		err  error
 	}
-	return dto.ConvertUserToResponse(user), nil
+
+	resultChan := make(chan result)
+
+	go func() {
+		var user entity.User
+		if err := u.db.Preload("Products").First(&user, id).Error; err != nil {
+			resultChan <- result{dto.UserWithProducts{}, err}
+			return
+		}
+		resultChan <- result{dto.ConvertUserToResponse(user), nil}
+	}()
+
+	res := <-resultChan
+	return res.user, res.err
 }
 
 func (u *userRepository) FindByEmail(email string) (dto.UserWithProducts, error) {
-	var user entity.User
-	if err := u.db.Where("email = ?", email).First(&user).Error; err != nil {
-		return dto.UserWithProducts{}, err
+	type result struct {
+		user dto.UserWithProducts
+		err  error
 	}
-	return dto.ConvertUserToResponse(user), nil
+
+	resultChan := make(chan result)
+
+	go func() {
+		var user entity.User
+		if err := u.db.Where("email = ?", email).First(&user).Error; err != nil {
+			resultChan <- result{dto.UserWithProducts{}, err}
+			return
+		}
+		resultChan <- result{dto.ConvertUserToResponse(user), nil}
+	}()
+
+	res := <-resultChan
+	return res.user, res.err
 }
 
 func NewUserRepository(db *gorm.DB) UserRepository {

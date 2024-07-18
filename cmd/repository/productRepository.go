@@ -25,13 +25,25 @@ type productRepository struct {
 
 // FindByStock implements ProductRepository.
 func (p *productRepository) FindByStock(stock int) ([]dto.ProductWithUsers, error) {
-	var products []entity.Product
-	if err := p.db.Where("stock = ?", stock).Preload("Users").Find(&products).Error; err != nil {
-		return nil, err
+	type result struct {
+		products []entity.Product
+		err      error
 	}
 
-	responseProducts := make([]dto.ProductWithUsers, len(products))
-	for i, product := range products {
+	resultChan := make(chan result)
+	go func() {
+		var products []entity.Product
+		err := p.db.Where("stock = ?", stock).Preload("Users").Find(&products).Error
+		resultChan <- result{products, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		return nil, res.err
+	}
+
+	responseProducts := make([]dto.ProductWithUsers, len(res.products))
+	for i, product := range res.products {
 		responseProducts[i] = dto.ConvertProductToResponse(product)
 	}
 
@@ -40,56 +52,90 @@ func (p *productRepository) FindByStock(stock int) ([]dto.ProductWithUsers, erro
 
 // Create implements ProductRepository.
 func (p *productRepository) Create(payload entity.Product) (dto.ProductWithUsers, error) {
-	// Create product
-	if err := p.db.Create(&payload).Error; err != nil {
-		return dto.ProductWithUsers{}, err
+	type result struct {
+		product entity.Product
+		err     error
 	}
 
-	// Load users to include in the response
-	var product entity.Product
-	if err := p.db.Preload("Users").First(&product, payload.ID).Error; err != nil {
-		return dto.ProductWithUsers{}, err
+	resultChan := make(chan result)
+	go func() {
+		if err := p.db.Create(&payload).Error; err != nil {
+			resultChan <- result{entity.Product{}, err}
+			return
+		}
+
+		var product entity.Product
+		err := p.db.Preload("Users").First(&product, payload.ID).Error
+		resultChan <- result{product, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		return dto.ProductWithUsers{}, res.err
 	}
 
-	return dto.ConvertProductToResponse(product), nil
+	return dto.ConvertProductToResponse(res.product), nil
 }
 
 // DeleteByID implements ProductRepository.
 func (p *productRepository) DeleteByID(id uint) error {
-	if err := p.db.Delete(&entity.Product{}, id).Error; err != nil {
-		return err
+	type result struct {
+		err error
 	}
-	return nil
+
+	resultChan := make(chan result)
+	go func() {
+		err := p.db.Delete(&entity.Product{}, id).Error
+		resultChan <- result{err}
+	}()
+
+	res := <-resultChan
+	return res.err
 }
 
 // FindAll implements ProductRepository.
 func (p *productRepository) FindAll(page int, size int) ([]dto.ProductWithUsers, model.Paging, error) {
-	var products []entity.Product
+	type result struct {
+		totalProducts int64
+		products      []entity.Product
+		err           error
+	}
+
 	offset := (page - 1) * size
+	resultChan := make(chan result)
 
-	// Retrieve total count of products
-	var totalProducts int64
-	if err := p.db.Model(&entity.Product{}).Count(&totalProducts).Error; err != nil {
-		log.Printf("productRepository.FindAll: Error counting products: %v \n", err.Error())
-		return nil, model.Paging{}, err
+	go func() {
+		var totalProducts int64
+		if err := p.db.Model(&entity.Product{}).Count(&totalProducts).Error; err != nil {
+			resultChan <- result{0, nil, err}
+			return
+		}
+
+		var products []entity.Product
+		if err := p.db.Limit(size).Offset(offset).Preload("Users").Find(&products).Error; err != nil {
+			resultChan <- result{totalProducts, nil, err}
+			return
+		}
+
+		resultChan <- result{totalProducts, products, nil}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		log.Printf("productRepository.FindAll: Error: %v \n", res.err)
+		return nil, model.Paging{}, res.err
 	}
 
-	// Retrieve paginated products
-	if err := p.db.Limit(size).Offset(offset).Preload("Users").Find(&products).Error; err != nil {
-		log.Printf("productRepository.FindAll: Error fetching products: %v \n", err.Error())
-		return nil, model.Paging{}, err
-	}
-
-	responseProducts := make([]dto.ProductWithUsers, len(products))
-	for i, product := range products {
+	responseProducts := make([]dto.ProductWithUsers, len(res.products))
+	for i, product := range res.products {
 		responseProducts[i] = dto.ConvertProductToResponse(product)
 	}
 
 	paging := model.Paging{
 		Page:        page,
 		RowsPerPage: size,
-		TotalRows:   int(totalProducts),
-		TotalPages:  int(math.Ceil(float64(totalProducts) / float64(size))),
+		TotalRows:   int(res.totalProducts),
+		TotalPages:  int(math.Ceil(float64(res.totalProducts) / float64(size))),
 	}
 
 	return responseProducts, paging, nil
@@ -97,26 +143,55 @@ func (p *productRepository) FindAll(page int, size int) ([]dto.ProductWithUsers,
 
 // FindByID implements ProductRepository.
 func (p *productRepository) FindByID(id uint) (dto.ProductWithUsers, error) {
-	var product entity.Product
-	if err := p.db.Preload("Users").First(&product, id).Error; err != nil {
-		return dto.ProductWithUsers{}, err
+	type result struct {
+		product entity.Product
+		err     error
 	}
-	return dto.ConvertProductToResponse(product), nil
+
+	resultChan := make(chan result)
+	go func() {
+		var product entity.Product
+		err := p.db.Preload("Users").First(&product, id).Error
+		resultChan <- result{product, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		return dto.ProductWithUsers{}, res.err
+	}
+
+	return dto.ConvertProductToResponse(res.product), nil
 }
 
 // UpdateByID implements ProductRepository.
 func (p *productRepository) UpdateByID(id uint, payload entity.Product) (dto.ProductWithUsers, error) {
-	var product entity.Product
-	if err := p.db.First(&product, id).Error; err != nil {
-		return dto.ProductWithUsers{}, err
-	}
-	if err := p.db.Model(&product).Updates(payload).Error; err != nil {
-		return dto.ProductWithUsers{}, err
+	type result struct {
+		product entity.Product
+		err     error
 	}
 
-	p.db.Preload("Users").First(&product, id)
+	resultChan := make(chan result)
+	go func() {
+		var product entity.Product
+		if err := p.db.First(&product, id).Error; err != nil {
+			resultChan <- result{entity.Product{}, err}
+			return
+		}
+		if err := p.db.Model(&product).Updates(payload).Error; err != nil {
+			resultChan <- result{entity.Product{}, err}
+			return
+		}
 
-	return dto.ConvertProductToResponse(product), nil
+		p.db.Preload("Users").First(&product, id)
+		resultChan <- result{product, nil}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		return dto.ProductWithUsers{}, res.err
+	}
+
+	return dto.ConvertProductToResponse(res.product), nil
 }
 
 func NewProductRepository(db *gorm.DB) ProductRepository {

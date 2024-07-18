@@ -9,8 +9,8 @@ import (
 )
 
 type AuthRequestRegisterDto struct {
-	FirstName       string `gorm:"type:varchar(300);not null" json:"first_name"`
-	LastName        string `gorm:"type:varchar(300);not null" json:"last_name"`
+	FirstName       string `gorm:"type:varchar(300);not null" json:"firstname"`
+	LastName        string `gorm:"type:varchar(300);not null" json:"lastname"`
 	Email           string `gorm:"not null;unique" json:"email"`
 	Password        string `gorm:"not null" json:"password"`
 	PasswordConfirm string `gorm:"not null" json:"password_confirm"`
@@ -28,8 +28,8 @@ type AuthResponseDto struct {
 
 type AuthResponseRegisterDto struct {
 	gorm.Model
-	FirstName string `gorm:"type:varchar(300);not null" json:"first_name"`
-	LastName  string `gorm:"type:varchar(300);not null" json:"last_name"`
+	FirstName string `gorm:"type:varchar(300);not null" json:"firstname"`
+	LastName  string `gorm:"type:varchar(300);not null" json:"lastname"`
 	Email     string `gorm:"not null;unique" json:"email"`
 	Role      string `gorm:"not null" json:"role"`
 }
@@ -41,8 +41,8 @@ type UserWithoutProducts struct {
 	CreatedAt time.Time   `json:"CreatedAt"`
 	UpdatedAt time.Time   `json:"UpdatedAt"`
 	DeletedAt DeletedAt   `gorm:"index" json:"DeletedAt,omitempty"`
-	FirstName string      `json:"first_name"`
-	LastName  string      `json:"last_name"`
+	FirstName string      `json:"firstname"`
+	LastName  string      `json:"lastname"`
 	Email     string      `json:"email"`
 	Password  string      `json:"password"`
 	Role      string      `json:"role"`
@@ -77,8 +77,8 @@ type UserWithProducts struct {
 	CreatedAt time.Time             `json:"CreatedAt"`
 	UpdatedAt time.Time             `json:"UpdatedAt"`
 	DeletedAt DeletedAt             `json:"DeletedAt,omitempty"`
-	FirstName string                `json:"first_name"`
-	LastName  string                `json:"last_name"`
+	FirstName string                `json:"firstname"`
+	LastName  string                `json:"lastname"`
 	Email     string                `json:"email"`
 	Password  string                `json:"password"`
 	Role      string                `json:"role"`

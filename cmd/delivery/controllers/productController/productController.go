@@ -7,7 +7,9 @@ import (
 	"github.com/altsaqif/go-rest/cmd/config"
 	"github.com/altsaqif/go-rest/cmd/delivery/middlewares"
 	"github.com/altsaqif/go-rest/cmd/entity"
+	"github.com/altsaqif/go-rest/cmd/entity/dto"
 	"github.com/altsaqif/go-rest/cmd/shared/common"
+	"github.com/altsaqif/go-rest/cmd/shared/model"
 	"github.com/altsaqif/go-rest/cmd/usecase"
 	"github.com/gin-gonic/gin"
 )
@@ -42,18 +44,30 @@ func (p *ProductController) GetAllHandler(ctx *gin.Context) {
 		size = 10
 	}
 
-	products, paging, err := p.productUc.FindAllProducts(page, size)
-	if err != nil {
-		common.SendErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+	type result struct {
+		products []dto.ProductWithUsers
+		paging   model.Paging
+		err      error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		products, paging, err := p.productUc.FindAllProducts(page, size)
+		resultChan <- result{products, paging, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
 
-	var interfaceSlice = make([]interface{}, len(products))
-	for i, v := range products {
+	var interfaceSlice = make([]interface{}, len(res.products))
+	for i, v := range res.products {
 		interfaceSlice[i] = v
 	}
 
-	common.SendPagedResponse(ctx, interfaceSlice, paging, "Ok")
+	common.SendPagedResponse(ctx, interfaceSlice, res.paging, "Ok")
 }
 
 // @Summary Get product by ID
@@ -74,12 +88,23 @@ func (p *ProductController) GetByIDHandler(ctx *gin.Context) {
 	}
 
 	uintValue := uint(convUint)
-	product, err := p.productUc.FindProductByID(uintValue)
-	if err != nil {
-		common.SendErrorResponse(ctx, http.StatusNotFound, err.Error())
+	type result struct {
+		product dto.ProductWithUsers
+		err     error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		product, err := p.productUc.FindProductByID(uintValue)
+		resultChan <- result{product, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusNotFound, res.err.Error())
 		return
 	}
-	common.SendSingleResponse(ctx, "Ok", product)
+	common.SendSingleResponse(ctx, "Ok", res.product)
 }
 
 // @Summary Get products by stock
@@ -99,12 +124,23 @@ func (p *ProductController) GetByStockHandler(ctx *gin.Context) {
 		return
 	}
 
-	products, err := p.productUc.FindProductsByStock(stock)
-	if err != nil {
-		common.SendErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+	type result struct {
+		products []dto.ProductWithUsers
+		err      error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		products, err := p.productUc.FindProductsByStock(stock)
+		resultChan <- result{products, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
-	common.SendSingleResponse(ctx, "Ok", products)
+	common.SendSingleResponse(ctx, "Ok", res.products)
 }
 
 // @Summary Create product
@@ -124,13 +160,24 @@ func (p *ProductController) CreateHandler(ctx *gin.Context) {
 		return
 	}
 
-	createdProduct, err := p.productUc.CreateProduct(product)
-	if err != nil {
-		common.SendErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+	type result struct {
+		createdProduct dto.ProductWithUsers
+		err            error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		createdProduct, err := p.productUc.CreateProduct(product)
+		resultChan <- result{createdProduct, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
 
-	common.SendSingleResponse(ctx, "Product created successfully", createdProduct)
+	common.SendSingleResponse(ctx, "Product created successfully", res.createdProduct)
 }
 
 // @Summary Update product
@@ -160,12 +207,23 @@ func (p *ProductController) UpdateHandler(ctx *gin.Context) {
 		return
 	}
 
-	product, err := p.productUc.UpdateProduct(uintValue, payload)
-	if err != nil {
-		common.SendErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+	type result struct {
+		product dto.ProductWithUsers
+		err     error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		product, err := p.productUc.UpdateProduct(uintValue, payload)
+		resultChan <- result{product, err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
-	common.SendSingleResponse(ctx, "Product updated successfully", product)
+	common.SendSingleResponse(ctx, "Product updated successfully", res.product)
 }
 
 // @Summary Delete product
@@ -186,18 +244,29 @@ func (p *ProductController) DeleteHandler(ctx *gin.Context) {
 	}
 
 	uintValue := uint(convUint)
-	if err := p.productUc.DeleteProduct(uintValue); err != nil {
-		common.SendErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+	type result struct {
+		err error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		err := p.productUc.DeleteProduct(uintValue)
+		resultChan <- result{err}
+	}()
+
+	res := <-resultChan
+	if res.err != nil {
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
 	common.SendSuccessResponse(ctx, "Product deleted successfully")
 }
 
 func (p *ProductController) Route() {
-	p.rg.GET(config.GetProductsList, p.authMid.RequireToken("user", "admin"), p.GetAllHandler)
-	p.rg.GET(config.GetProducts, p.authMid.RequireToken("user", "admin"), p.GetByIDHandler)
-	p.rg.GET(config.GetProductsByStocks, p.authMid.RequireToken("user", "admin"), p.GetByStockHandler)
-	p.rg.POST(config.PostProducts, p.authMid.RequireToken("user", "admin"), p.CreateHandler)
-	p.rg.PUT(config.PutProducts, p.authMid.RequireToken("user", "admin"), p.UpdateHandler)
-	p.rg.DELETE(config.DelProducts, p.authMid.RequireToken("user", "admin"), p.DeleteHandler)
+	p.rg.GET(config.GetProductsList, p.authMid.RequireToken("customer", "reseller", "admin"), p.GetAllHandler)
+	p.rg.GET(config.GetProducts, p.authMid.RequireToken("customer", "reseller", "admin"), p.GetByIDHandler)
+	p.rg.GET(config.GetProductsByStocks, p.authMid.RequireToken("reseller", "admin"), p.GetByStockHandler)
+	p.rg.POST(config.PostProducts, p.authMid.RequireToken("reseller", "admin"), p.CreateHandler)
+	p.rg.PUT(config.PutProducts, p.authMid.RequireToken("reseller", "admin"), p.UpdateHandler)
+	p.rg.DELETE(config.DelProducts, p.authMid.RequireToken("reseller", "admin"), p.DeleteHandler)
 }

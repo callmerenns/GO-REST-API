@@ -20,31 +20,103 @@ type productUseCase struct {
 	repo repository.ProductRepository
 }
 
-// FindProductsByStock implements ProductUseCase.
-func (p *productUseCase) FindProductsByStock(stock int) ([]dto.ProductWithUsers, error) {
-	return p.repo.FindByStock(stock)
-}
-
 func NewProductUseCase(repo repository.ProductRepository) ProductUseCase {
 	return &productUseCase{repo: repo}
 }
 
 func (p *productUseCase) CreateProduct(payload entity.Product) (dto.ProductWithUsers, error) {
-	return p.repo.Create(payload)
+	type result struct {
+		product dto.ProductWithUsers
+		err     error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		product, err := p.repo.Create(payload)
+		resultChan <- result{product, err}
+	}()
+
+	res := <-resultChan
+	return res.product, res.err
 }
 
 func (p *productUseCase) FindProductByID(id uint) (dto.ProductWithUsers, error) {
-	return p.repo.FindByID(id)
+	type result struct {
+		product dto.ProductWithUsers
+		err     error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		product, err := p.repo.FindByID(id)
+		resultChan <- result{product, err}
+	}()
+
+	res := <-resultChan
+	return res.product, res.err
 }
 
 func (p *productUseCase) FindAllProducts(page, size int) ([]dto.ProductWithUsers, model.Paging, error) {
-	return p.repo.FindAll(page, size)
+	type result struct {
+		products []dto.ProductWithUsers
+		paging   model.Paging
+		err      error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		products, paging, err := p.repo.FindAll(page, size)
+		resultChan <- result{products, paging, err}
+	}()
+
+	res := <-resultChan
+	return res.products, res.paging, res.err
+}
+
+// FindProductsByStock implements ProductUseCase.
+func (p *productUseCase) FindProductsByStock(stock int) ([]dto.ProductWithUsers, error) {
+	type result struct {
+		products []dto.ProductWithUsers
+		err      error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		products, err := p.repo.FindByStock(stock)
+		resultChan <- result{products, err}
+	}()
+
+	res := <-resultChan
+	return res.products, res.err
 }
 
 func (p *productUseCase) UpdateProduct(id uint, payload entity.Product) (dto.ProductWithUsers, error) {
-	return p.repo.UpdateByID(id, payload)
+	type result struct {
+		product dto.ProductWithUsers
+		err     error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		product, err := p.repo.UpdateByID(id, payload)
+		resultChan <- result{product, err}
+	}()
+
+	res := <-resultChan
+	return res.product, res.err
 }
 
 func (p *productUseCase) DeleteProduct(id uint) error {
-	return p.repo.DeleteByID(id)
+	type result struct {
+		err error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		err := p.repo.DeleteByID(id)
+		resultChan <- result{err}
+	}()
+
+	res := <-resultChan
+	return res.err
 }
