@@ -1,0 +1,40 @@
+# Configuration docker-compose
+version: '3.8'
+
+services:
+  db:
+    image: mysql:latest
+    container_name: go-api
+    environment:
+      MYSQL_DB: go_api
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 3edc2wsx1qaz
+    ports:
+      - "3309:3306"
+    volumes:
+      - volume-go-api:/var/lib/mysql/data
+    networks:
+      - network-go-api
+
+  app:
+    build: ./app
+    container_name: golang-api
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: mysql
+      DB_PASSWORD: 3edc2wsx1qaz
+      DB_NAME: api
+      # Add other environment variables here if needed
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    networks:
+      - network-go-api
+
+volumes:
+  volume-go-api:
+
+networks:
+  network-go-api:
