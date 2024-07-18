@@ -110,8 +110,8 @@ func (u *UserController) GetHandler(ctx *gin.Context) {
 }
 
 func (u *UserController) Route() {
-	u.rg.GET(config.GetUsersList, u.authMid.RequireToken("user", "admin"), u.GetAllHandler)
-	u.rg.GET(config.GetUsers, u.authMid.RequireToken("user", "admin"), u.GetHandler)
+	u.rg.GET(config.GetUsersList, u.authMid.RequireToken("admin"), u.GetAllHandler)
+	u.rg.GET(config.GetUsers, u.authMid.RequireToken("admin"), u.GetHandler)
 }
 
 func NewUserController(userUc usecase.UserUseCase, rg *gin.RouterGroup, authMid middlewares.AuthMiddleware) *UserController {
