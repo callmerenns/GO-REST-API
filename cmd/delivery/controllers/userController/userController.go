@@ -28,6 +28,7 @@ type UserController struct {
 // @Param size query int false "Page size"
 // @Success 200 {object} model.PagedResponse
 // @Failure 500 {object} model.Status
+// @Failure 404 {object} model.Status
 // @Router /profiles [get]
 func (u *UserController) GetAllHandler(ctx *gin.Context) {
 	page, errPage := strconv.Atoi(ctx.DefaultQuery("page", "1"))
@@ -65,6 +66,12 @@ func (u *UserController) GetAllHandler(ctx *gin.Context) {
 		return
 	}
 
+	// Check if no users were found
+	if len(res.users) == 0 {
+		common.SendErrorResponse(ctx, http.StatusNotFound, "User not found")
+		return
+	}
+
 	var interfaceSlice = make([]interface{}, len(res.users))
 	for i, v := range res.users {
 		interfaceSlice[i] = v
@@ -79,6 +86,7 @@ func (u *UserController) GetAllHandler(ctx *gin.Context) {
 // @Produce json
 // @Param id path string true "User ID"
 // @Success 200 {object} model.SingleResponse
+// @Failure 500 {object} model.Status
 // @Failure 400 {object} model.Status
 // @Router /profiles/{id} [get]
 func (u *UserController) GetHandler(ctx *gin.Context) {
@@ -103,9 +111,16 @@ func (u *UserController) GetHandler(ctx *gin.Context) {
 
 	res := <-resultChan
 	if res.err != nil {
-		common.SendErrorResponse(ctx, http.StatusNotFound, res.err.Error())
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
+
+	// Check if user was not found by checking the ID field
+	if res.user.ID == 0 {
+		common.SendErrorResponse(ctx, http.StatusNotFound, "User not found")
+		return
+	}
+
 	common.SendSingleResponse(ctx, "Ok", res.user)
 }
 

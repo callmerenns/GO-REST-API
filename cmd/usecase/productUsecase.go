@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"fmt"
+
 	"github.com/altsaqif/go-rest/cmd/entity"
 	"github.com/altsaqif/go-rest/cmd/entity/dto"
 	"github.com/altsaqif/go-rest/cmd/repository"
@@ -14,6 +16,7 @@ type ProductUseCase interface {
 	FindProductsByStock(stock int) ([]dto.ProductWithUsers, error)
 	UpdateProduct(id uint, payload entity.Product) (dto.ProductWithUsers, error)
 	DeleteProduct(id uint) error
+	ProductExists(id uint) (bool, error)
 }
 
 type productUseCase struct {
@@ -119,4 +122,28 @@ func (p *productUseCase) DeleteProduct(id uint) error {
 
 	res := <-resultChan
 	return res.err
+}
+
+func (p *productUseCase) ProductExists(id uint) (bool, error) {
+	// Channels for signaling completion and errors
+	existsCh := make(chan bool)
+	errCh := make(chan error, 1)
+
+	// Goroutine to check if the product exists
+	go func() {
+		exists, err := p.repo.ProductExists(id)
+		if err != nil {
+			errCh <- fmt.Errorf("failed to check if product exists: %v", err)
+			return
+		}
+		existsCh <- exists
+	}()
+
+	// Wait for results or errors
+	select {
+	case exists := <-existsCh:
+		return exists, nil
+	case err := <-errCh:
+		return false, err
+	}
 }

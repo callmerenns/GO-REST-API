@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/altsaqif/go-rest/cmd/shared/common"
 	"github.com/altsaqif/go-rest/cmd/shared/service"
 	"github.com/gin-gonic/gin"
 )
@@ -38,7 +39,7 @@ func (a *authMiddleware) RequireToken(roles ...string) gin.HandlerFunc {
 			fmt.Println("Token : ", cookie)
 			if err != nil {
 				log.Println("RequireToken: Error retrieving token from cookie:", err)
-				ctx.AbortWithStatus(http.StatusUnauthorized)
+				common.SendErrorResponse(ctx, http.StatusUnauthorized, "Please login first")
 				return
 			}
 			tokenHeader = cookie
@@ -47,14 +48,14 @@ func (a *authMiddleware) RequireToken(roles ...string) gin.HandlerFunc {
 
 		if tokenHeader == "" {
 			log.Println("RequireToken: Token is empty")
-			ctx.AbortWithStatus(http.StatusUnauthorized)
+			common.SendErrorResponse(ctx, http.StatusUnauthorized, "Please login first")
 			return
 		}
 
 		claims, err := a.jwtService.ParseToken(tokenHeader)
 		if err != nil {
 			log.Printf("RequireToken: Error parsing token: %v \n", err)
-			ctx.AbortWithStatus(http.StatusUnauthorized)
+			common.SendErrorResponse(ctx, http.StatusInternalServerError, "RequireToken: Error parsing token")
 			return
 		}
 
@@ -63,13 +64,13 @@ func (a *authMiddleware) RequireToken(roles ...string) gin.HandlerFunc {
 		role, ok := claims["role"]
 		if !ok {
 			log.Println("RequireToken: Missing role in token")
-			ctx.AbortWithStatus(http.StatusUnauthorized)
+			common.SendErrorResponse(ctx, http.StatusInternalServerError, "Missing role in token")
 			return
 		}
 
 		if !isValidRole(role.(string), roles) {
 			log.Println("RequireToken: Invalid role")
-			ctx.AbortWithStatus(http.StatusForbidden)
+			common.SendErrorResponse(ctx, http.StatusForbidden, "Invalid role")
 			return
 		}
 

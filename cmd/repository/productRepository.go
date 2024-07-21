@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"log"
 	"math"
 
@@ -17,6 +18,7 @@ type ProductRepository interface {
 	FindByStock(stock int) ([]dto.ProductWithUsers, error)
 	UpdateByID(id uint, payload entity.Product) (dto.ProductWithUsers, error)
 	DeleteByID(id uint) error
+	ProductExists(id uint) (bool, error)
 }
 
 type productRepository struct {
@@ -192,6 +194,30 @@ func (p *productRepository) UpdateByID(id uint, payload entity.Product) (dto.Pro
 	}
 
 	return dto.ConvertProductToResponse(res.product), nil
+}
+
+func (p *productRepository) ProductExists(id uint) (bool, error) {
+	// Channels for signaling completion and errors
+	existsCh := make(chan bool)
+	errCh := make(chan error, 1)
+
+	go func() {
+		var count int64
+		err := p.db.Model(&entity.Product{}).Where("id = ?", id).Count(&count).Error
+		if err != nil {
+			errCh <- err
+			return
+		}
+		existsCh <- count > 0
+	}()
+
+	// Wait for results or errors
+	select {
+	case exists := <-existsCh:
+		return exists, nil
+	case err := <-errCh:
+		return false, fmt.Errorf("failed to check if product exists: %v", err)
+	}
 }
 
 func NewProductRepository(db *gorm.DB) ProductRepository {

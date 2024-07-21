@@ -1,6 +1,7 @@
 package productController
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/altsaqif/go-rest/cmd/shared/model"
 	"github.com/altsaqif/go-rest/cmd/usecase"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type ProductController struct {
@@ -32,6 +34,7 @@ func NewProductController(productUc usecase.ProductUseCase, rg *gin.RouterGroup,
 // @Param size query int false "Page size"
 // @Success 200 {object} model.PagedResponse
 // @Failure 500 {object} model.Status
+// @Failure 404 {object} model.Status
 // @Router /products [get]
 func (p *ProductController) GetAllHandler(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.Query("page"))
@@ -62,6 +65,11 @@ func (p *ProductController) GetAllHandler(ctx *gin.Context) {
 		return
 	}
 
+	if len(res.products) == 0 {
+		common.SendErrorResponse(ctx, http.StatusNotFound, "Products not found")
+		return
+	}
+
 	var interfaceSlice = make([]interface{}, len(res.products))
 	for i, v := range res.products {
 		interfaceSlice[i] = v
@@ -77,6 +85,8 @@ func (p *ProductController) GetAllHandler(ctx *gin.Context) {
 // @Param id path string true "Product ID"
 // @Success 200 {object} model.SingleResponse
 // @Failure 400 {object} model.Status
+// @Failure 404 {object} model.Status
+// @Failure 500 {object} model.Status
 // @Failure 404 {object} model.Status
 // @Router /products/{id} [get]
 func (p *ProductController) GetByIDHandler(ctx *gin.Context) {
@@ -101,9 +111,21 @@ func (p *ProductController) GetByIDHandler(ctx *gin.Context) {
 
 	res := <-resultChan
 	if res.err != nil {
-		common.SendErrorResponse(ctx, http.StatusNotFound, res.err.Error())
+		// Customize the error message for "record not found"
+		if errors.Is(res.err, gorm.ErrRecordNotFound) {
+			common.SendErrorResponse(ctx, http.StatusNotFound, "Product not found")
+		} else {
+			common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
+		}
 		return
 	}
+
+	// Check if the product is empty
+	if res.product.ID == 0 {
+		common.SendErrorResponse(ctx, http.StatusNotFound, "Product not found")
+		return
+	}
+
 	common.SendSingleResponse(ctx, "Ok", res.product)
 }
 
@@ -115,6 +137,7 @@ func (p *ProductController) GetByIDHandler(ctx *gin.Context) {
 // @Success 200 {object} model.SingleResponse
 // @Failure 400 {object} model.Status
 // @Failure 500 {object} model.Status
+// @Failure 404 {object} model.Status
 // @Router /products/stock/{stock} [get]
 func (p *ProductController) GetByStockHandler(ctx *gin.Context) {
 	stockStr := ctx.Param("stock")
@@ -140,6 +163,13 @@ func (p *ProductController) GetByStockHandler(ctx *gin.Context) {
 		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
+
+	// Check if no products are found
+	if len(res.products) == 0 {
+		common.SendErrorResponse(ctx, http.StatusNotFound, "Products not found")
+		return
+	}
+
 	common.SendSingleResponse(ctx, "Ok", res.products)
 }
 
@@ -190,6 +220,7 @@ func (p *ProductController) CreateHandler(ctx *gin.Context) {
 // @Success 200 {object} model.SingleResponse
 // @Failure 400 {object} model.Status
 // @Failure 400 {object} model.Status
+// @Failure 404 {object} model.Status
 // @Failure 500 {object} model.Status
 // @Router /products/{id} [put]
 func (p *ProductController) UpdateHandler(ctx *gin.Context) {
@@ -220,7 +251,11 @@ func (p *ProductController) UpdateHandler(ctx *gin.Context) {
 
 	res := <-resultChan
 	if res.err != nil {
-		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
+		if errors.Is(res.err, gorm.ErrRecordNotFound) {
+			common.SendErrorResponse(ctx, http.StatusNotFound, "Product not found")
+		} else {
+			common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
+		}
 		return
 	}
 	common.SendSingleResponse(ctx, "Product updated successfully", res.product)
@@ -234,6 +269,8 @@ func (p *ProductController) UpdateHandler(ctx *gin.Context) {
 // @Success 200 {object} model.SingleResponse
 // @Failure 400 {object} model.Status
 // @Failure 500 {object} model.Status
+// @Failure 404 {object} model.Status
+// @Failure 500 {object} model.Status
 // @Router /products/{id} [delete]
 func (p *ProductController) DeleteHandler(ctx *gin.Context) {
 	id := ctx.Param("id")
@@ -244,6 +281,19 @@ func (p *ProductController) DeleteHandler(ctx *gin.Context) {
 	}
 
 	uintValue := uint(convUint)
+
+	// First, check if the product exists
+	exists, err := p.productUc.ProductExists(uintValue)
+	if err != nil {
+		common.SendErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !exists {
+		common.SendErrorResponse(ctx, http.StatusNotFound, "Product not found")
+		return
+	}
+
+	// Proceed to delete the product
 	type result struct {
 		err error
 	}
@@ -259,6 +309,7 @@ func (p *ProductController) DeleteHandler(ctx *gin.Context) {
 		common.SendErrorResponse(ctx, http.StatusInternalServerError, res.err.Error())
 		return
 	}
+
 	common.SendSuccessResponse(ctx, "Product deleted successfully")
 }
 
