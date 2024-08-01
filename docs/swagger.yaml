@@ -11,9 +11,9 @@ definitions:
     properties:
       email:
         type: string
-      first_name:
+      firstname:
         type: string
-      last_name:
+      lastname:
         type: string
       password:
         type: string
@@ -165,6 +165,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/model.PagedResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.Status'
         "500":
           description: Internal Server Error
           schema:
@@ -221,6 +225,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/model.Status'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.Status'
         "500":
           description: Internal Server Error
           schema:
@@ -249,6 +257,10 @@ paths:
             $ref: '#/definitions/model.Status'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/model.Status'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/model.Status'
       summary: Get product by ID
@@ -281,6 +293,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/model.Status'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.Status'
         "500":
           description: Internal Server Error
           schema:
@@ -306,6 +322,10 @@ paths:
             $ref: '#/definitions/model.SingleResponse'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/model.Status'
         "500":
@@ -334,6 +354,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/model.PagedResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.Status'
         "500":
           description: Internal Server Error
           schema:
@@ -359,6 +383,10 @@ paths:
             $ref: '#/definitions/model.SingleResponse'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Status'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/model.Status'
       summary: Get user by ID
