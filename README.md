@@ -49,7 +49,7 @@ DB_PORT=your_db_port
 DB_NAME=your_db_name
 DB_DRIVER=your_db_driver
 
-# Configurasi APP
+# Configuration APP
 API_PORT=your_api_port
 ```
 
